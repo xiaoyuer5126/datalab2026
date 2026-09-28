@@ -19,7 +19,7 @@
  * Difficulty: 1
  */
 int bitAnd(int x, int y) {
-    return 2;
+    return ~((~x)|(~y));
 }
 
 /*
@@ -30,7 +30,7 @@ int bitAnd(int x, int y) {
  *   Difficulty: 1
  */
 int bitXor(int x, int y) {
-    return 2;
+    return (~(x&y))&(~((~x)&(~y)));
 }
 
 /*
@@ -50,7 +50,11 @@ int bitXor(int x, int y) {
  *   1 if x and y have the same sign , 0 otherwise.
  */
 int samesign(int x, int y) {
-    return 2;
+    if(!(!x)^(!y))
+    {
+        return !((x>>31)^(y>>31));
+    }
+    return 0;
 }
 
 /*
@@ -63,7 +67,22 @@ int samesign(int x, int y) {
  *   Difficulty: 4
  */
 int logtwo(int v) {
-    return 2;
+    int count=0;
+    int temp=((v>>16)>0)<<4;
+    count=count|temp;
+    v=v>>temp;
+    temp=((v>>8)>0)<<3;
+    count=count|temp;
+    v=v>>temp;
+    temp=((v>>4)>0)<<2;
+    count=count|temp;
+    v=v>>temp;
+    temp=((v>>2)>0)<<1;
+    count=count|temp;
+    v=v>>temp;
+    temp=(v>>1)>0;
+    count=count|temp;
+    return count;
 }
 
 /*
@@ -76,7 +95,16 @@ int logtwo(int v) {
  *    Difficulty: 2
  */
 int byteSwap(int x, int n, int m) {
-    return 2;
+    int count1=n<<3, count2=m<<3;
+    int mask1=0xFF<<(count1);
+    int mask2=0xFF<<(count2);
+    int temp1=x&mask1;
+    int temp2=x&mask2;
+    int mask3=~(mask1|mask2);
+    int temp3=x&mask3;
+    temp1=temp1>>(count1)<<(count2)&mask2;
+    temp2=temp2>>(count2)<<(count1)&mask1;
+    return temp1|temp2|temp3;
 }
 
 /*
@@ -88,7 +116,13 @@ int byteSwap(int x, int n, int m) {
  *   Difficulty: 3
  */
 unsigned reverse(unsigned v) {
-    return 2;
+    unsigned result = 0;
+    for(int i=32;i;i--)
+    {
+        result=(result<<1)|(v&1);
+        v=v>>1;
+    }
+    return result;
 }
 
 /*
@@ -100,7 +134,8 @@ unsigned reverse(unsigned v) {
  *   Difficulty: 3
  */
 int logicalShift(int x, int n) {
-    return 2;
+    int mask=1<<31>>n<<1;
+    return (x>>n)&(~mask);
 }
 
 /*
@@ -111,8 +146,31 @@ int logicalShift(int x, int n) {
  *   Max ops: 50
  *   Difficulty: 4
  */
-int leftBitCount(int x) {
-    return 2;
+int leftBitCount(int x) {//先取反，再找前导0
+    x=~x;
+    int count=0;
+    int temp;
+    temp=!(x>>16)<<4;
+    count=count|temp;
+    x=x<<temp;
+
+    temp=!(x>>24)<<3;
+    count=count|temp;
+    x=x<<temp;
+
+    temp=!(x>>28)<<2;
+    count=count|temp;
+    x=x<<temp;
+
+    temp=!(x>>30)<<1;
+    count=count|temp;
+    x=x<<temp;
+
+    temp=!(x>>31);
+    count=count|temp;
+    x=x<<temp;
+
+    return count+!x;
 }
 
 /*
@@ -124,7 +182,27 @@ int leftBitCount(int x) {
  *   Difficulty: 4
  */
 unsigned float_i2f(int x) {
-    return 2;
+    if(x==0) return 0;
+    int sign=x&0x80000000;
+    if(sign) x=-x;
+    int temp=0;
+    while(!(x&(1<<31)))
+    {
+        x=x<<1;
+        temp+=1;
+    }
+    int dropped=x&0xFF;
+    x=(x>>8)&0x7FFFFF;
+    int guard=(dropped>>7)&1;
+    int sticky=(dropped&0x7F)!=0;
+    if(guard&(sticky|(x&1))) x+=1;
+    if(x==(1<<23))
+    {
+    x=0;
+    temp--;
+    }
+    temp=((31-temp)+127)<<23;
+    return sign|temp|x;
 }
 
 /*
@@ -139,7 +217,13 @@ unsigned float_i2f(int x) {
  *   Difficulty: 4
  */
 unsigned floatScale2(unsigned uf) {
-    return 2;
+    unsigned sign=uf&0x80000000;
+    unsigned exp=(uf>>23)&0xFF;
+    unsigned frac=uf&0x7FFFFF;
+    if(exp==0xFF) return uf;
+    if(exp==0) return uf+frac;
+    if(exp==0xFE) return sign|0x7F800000;
+    return uf+0x00800000;
 }
 
 /*
@@ -156,7 +240,22 @@ unsigned floatScale2(unsigned uf) {
  *   Difficulty: 3
  */
 int float64_f2i(unsigned uf1, unsigned uf2) {
-    return 2;
+    unsigned sign=uf2&0x80000000;
+    unsigned exp=(uf2>>20)&0x7FF;
+    unsigned f2=uf2&0xFFFFF;
+    unsigned f1=uf1;
+    if(!exp) return 0;
+    int e=exp-1023;
+    if(e<0) return 0;
+    if(e>=31) return 0x80000000;
+
+    unsigned shift=52-e;
+    f2=(1<<20)|f2;
+    unsigned result;
+    if(shift>=32) result=f2>>(shift-32);
+    else result=(f2<<(32-shift))|(f1>>shift);
+    if(sign) return -result;
+    return result;
 }
 
 /*
@@ -173,5 +272,8 @@ int float64_f2i(unsigned uf1, unsigned uf2) {
  *   Difficulty: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+    if(x>127) return 0x7F800000;
+    if(x<-149) return 0;
+    if(x>=-126) return (x+127)<<23;
+    return 1<<(x+149);
 }
